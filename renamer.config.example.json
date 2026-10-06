@@ -1,0 +1,10 @@
+{
+  "port": 7845,
+  "host": "0.0.0.0",
+  "roots": [
+    "/Volumes/Media",
+    "/Users/TU_USUARIO/Downloads"
+  ],
+  "ignoreNames": [".DS_Store", "Thumbs.db", "desktop.ini"],
+  "historyLimit": 500
+}

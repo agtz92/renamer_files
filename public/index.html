@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Renamer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h3.5l2 2.5H18a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"></path><path d="M9.5 13.5h5"></path></svg>
+    Renamer
+  </div>
+  <nav class="nav">
+    <button type="button" id="nav-rename" aria-current="page">Renombrar</button>
+    <button type="button" id="nav-history">Historial</button>
+  </nav>
+  <span class="host" id="host"></span>
+</div>
+
+<!-- ======================= RENOMBRAR ======================= -->
+<main id="view-rename">
+  <div>
+    <h1>Renombrar</h1>
+    <p class="sub">Nada se escribe en disco hasta que aplicas. La vista previa es la fuente de verdad.</p>
+  </div>
+
+  <div id="result-banner" class="hidden"></div>
+
+  <div class="card">
+    <div class="row">
+      <div class="col grow">
+        <label class="field" for="root">Carpeta</label>
+        <input type="text" id="root" placeholder="/Volumes/Media/…" autocomplete="off">
+      </div>
+      <button type="button" class="btn" id="browse">Elegir…</button>
+      <div class="col" style="gap:8px;padding-bottom:4px">
+        <label class="check"><input type="checkbox" id="opt-subfolders" checked> Incluir subcarpetas</label>
+        <label class="check"><input type="checkbox" id="opt-flatten" checked> Mover todo a la raíz</label>
+        <label class="check"><input type="checkbox" id="opt-rmdirs" checked> Borrar carpetas vacías</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <h2>Regla</h2>
+      <div class="tabs" id="modes">
+        <button type="button" data-mode="auto" aria-pressed="false">Automático</button>
+        <button type="button" data-mode="pattern" aria-pressed="true">Patrón</button>
+        <button type="button" data-mode="regex" aria-pressed="false">Regex</button>
+      </div>
+      <span class="spacer"></span>
+      <select id="saved-rules" aria-label="Regla guardada" style="width:auto;min-width:200px"></select>
+      <button type="button" class="btn sm" id="save-rule">Guardar regla</button>
+    </div>
+
+    <div class="row" style="margin-top:16px;align-items:flex-start">
+      <div class="col grow" style="flex:1 1 320px">
+        <label class="field" for="pattern" id="pattern-label">Identifica los archivos con</label>
+        <input type="text" id="pattern" placeholder="Episode #" autocomplete="off">
+        <span class="hint" id="pattern-hint"></span>
+      </div>
+      <div style="padding:30px 0 0 0;color:var(--ink-faint)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg>
+      </div>
+      <div class="col grow" style="flex:1 1 320px">
+        <label class="field" for="template">Nómbralos</label>
+        <input type="text" id="template" value="S01E{#:02}{ext}" autocomplete="off">
+        <span class="hint" id="template-hint"></span>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-faint);display:flex;flex-direction:column;gap:12px">
+      <p class="hint" style="margin:0;max-width:72ch">
+        <strong style="color:var(--ink)">Escribe el nombre completo que quieres.</strong>
+        El texto se copia literal; solo las piezas entre llaves se reemplazan. Para que quede
+        <span class="chip">S01E01-Akame ga Kill.mkv</span> escribes
+        <span class="chip">S01E{#:02}-Akame ga Kill{ext}</span>.
+      </p>
+
+      <div class="row" style="gap:6px;align-items:center">
+        <span class="overline" style="margin-right:6px">Piezas</span>
+        <button type="button" class="chip" data-token="{#:02}" title="El numero del episodio con dos digitos: 1 queda como 01">{#:02}</button>
+        <button type="button" class="chip" data-token="{#}" title="El numero del episodio tal cual, sin ceros">{#}</button>
+        <button type="button" class="chip" data-token="{s:02}" title="La temporada con dos digitos. Solo sirve si el patron la captura (S01E02, 1x02)">{s:02}</button>
+        <button type="button" class="chip" data-token="{ext}" title="La extension con punto: .mkv, .ass. Ponla siempre al final">{ext}</button>
+        <button type="button" class="chip" data-token="{carpeta}" title="El nombre de la carpeta elegida, normalmente el nombre de la serie">{carpeta}</button>
+        <button type="button" class="chip" data-token="{resto}" title="Lo que sobra del nombre despues de la coincidencia, con los puntos convertidos en espacios">{resto}</button>
+        <button type="button" class="chip" data-token="{n:02}" title="Consecutivo 01, 02, 03 en el orden de la tabla. Para archivos que no traen numero">{n:02}</button>
+        <span class="hint">clic para insertarla · pasa el cursor para ver qué hace</span>
+      </div>
+
+      <details>
+        <summary class="hint" style="cursor:pointer;width:fit-content">Ver más ejemplos</summary>
+        <table class="examples">
+          <thead><tr><th>Si quieres que quede</th><th>Escribe</th></tr></thead>
+          <tbody>
+            <tr><td>S01E01.mkv</td><td><code>S01E{#:02}{ext}</code></td></tr>
+            <tr><td>S01E01-Akame ga Kill.mkv</td><td><code>S01E{#:02}-Akame ga Kill{ext}</code></td></tr>
+            <tr><td>S01E01-<em>nombre de la carpeta</em>.mkv</td><td><code>S01E{#:02}-{carpeta}{ext}</code></td></tr>
+            <tr><td>Akame ga Kill - S01E01.mkv</td><td><code>{carpeta} - S01E{#:02}{ext}</code></td></tr>
+            <tr><td>S02E05.mkv, con la temporada del nombre original</td><td><code>S{s:02}E{e:02}{ext}</code></td></tr>
+            <tr><td>01 - Título del episodio.mkv</td><td><code>{#:02} - {resto}{ext}</code></td></tr>
+            <tr><td>Akame ga Kill 01.mkv, numerando en orden</td><td><code>{carpeta} {n:02}{ext}</code></td></tr>
+          </tbody>
+        </table>
+      </details>
+    </div>
+  </div>
+
+  <div class="metrics" id="metrics"></div>
+
+  <div class="card flush" id="table-card">
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="select-all" checked aria-label="Seleccionar todo"></th>
+            <th>Archivo actual</th>
+            <th style="width:230px">Nombre nuevo</th>
+            <th style="width:190px">Estado</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="tablefoot">
+      <span class="hint" id="plan-summary">Elige una carpeta para empezar.</span>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="recalc">Recalcular</button>
+      <button type="button" class="btn primary" id="apply" disabled>Aplicar</button>
+    </div>
+  </div>
+
+  <div class="empty hidden" id="empty-state">
+    <strong>Ninguna carpeta seleccionada</strong>
+    <p class="hint" style="margin:8px 0 12px">Navega el disco del servidor o pega la ruta. Nada se lee hasta que confirmas.</p>
+    <button type="button" class="btn primary" id="browse-2">Explorar carpetas</button>
+  </div>
+</main>
+
+<!-- ======================= HISTORIAL ======================= -->
+<main id="view-history" class="hidden">
+  <div>
+    <h1>Historial</h1>
+    <p class="sub">Cada operación guarda el mapa completo de movimientos, así que se puede deshacer mientras los archivos sigan donde quedaron.</p>
+  </div>
+  <div id="history-list" style="display:flex;flex-direction:column;gap:12px"></div>
+</main>
+
+<!-- ======================= SELECTOR ======================= -->
+<dialog id="picker">
+  <div class="dialog-head">
+    <h2>Elegir carpeta</h2>
+    <p class="sub">El explorador solo baja por las rutas permitidas en la configuración.</p>
+  </div>
+  <div class="crumbs" id="crumbs"></div>
+  <div class="picker-list" id="picker-list"></div>
+  <div class="dialog-foot">
+    <span class="path" id="picker-path"></span>
+    <button type="button" class="btn" id="picker-cancel">Cancelar</button>
+    <button type="button" class="btn primary" id="picker-use">Usar esta carpeta</button>
+  </div>
+</dialog>
+
+<script src="/app.js" type="module"></script>
+</body>
+</html>

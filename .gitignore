@@ -1,0 +1,9 @@
+node_modules/
+dist/
+data/
+test/.fixtures/
+*.log
+.DS_Store
+
+# Config real: rutas y usuario de esta maquina. Copiar del .example
+renamer.config.json
